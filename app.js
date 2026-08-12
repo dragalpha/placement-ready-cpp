@@ -737,7 +737,7 @@ document.addEventListener("click", (event) => {
   }
 
   if (action === "open-mission") {
-    state.currentView = "dashboard";
+    state.currentView = "mission";
     state.selectedProblemId = Number(problemId);
     updateProblemHash(state.selectedProblemId);
     state.message = null;
