@@ -92,6 +92,39 @@ function getCurrentMission() {
   return next || window.PROBLEMS[window.PROBLEMS.length - 1];
 }
 
+function getCompletedXpBefore(problemId) {
+  const targetId = Number(problemId);
+  return window.PROBLEMS
+    .filter((problem) => problem.id < targetId && isProblemCompleted(problem.id))
+    .reduce((sum, problem) => sum + Number(problem.xp), 0);
+}
+
+function updateProblemHash(problemId) {
+  const nextId = Number(problemId);
+  if (!Number.isFinite(nextId)) return;
+  window.history.replaceState({}, "", `#problem-${nextId}`);
+}
+
+function getProblemIdFromHash() {
+  const hash = window.location.hash || "";
+  const match = hash.match(/problem-(\d+)/i);
+  return match ? Number(match[1]) : null;
+}
+
+function jumpToProblem(problemId) {
+  const targetId = Number(problemId);
+  if (!Number.isFinite(targetId) || !getProblemById(targetId)) {
+    return { ok: false, message: "Enter a valid problem number." };
+  }
+
+  state.currentView = "mission";
+  state.selectedProblemId = targetId;
+  state.message = null;
+  updateProblemHash(targetId);
+  render();
+  return { ok: true, message: "Opened mission." };
+}
+
 function isProblemUnlocked(problemId) {
   const problem = getProblemById(problemId);
   if (!problem) {
@@ -322,6 +355,12 @@ function renderSkillTree() {
       <div class="panel-header" style="margin-bottom: 20px;">
         <h2>Skill Tree</h2>
       </div>
+
+      <div class="jump-bar">
+        <input id="jump-problem-input" type="number" min="1" max="300" placeholder="Jump to problem #" aria-label="Jump to problem number" />
+        <button class="secondary-button" type="button" data-action="jump-problem">Jump</button>
+      </div>
+
       <div class="skill-grid">${groups.join("")}</div>
     </section>
   `;
@@ -332,6 +371,8 @@ function renderMission() {
   const messageHtml = state.message
     ? `<div class="status-message ${state.message.type}">${state.message.text}</div>`
     : "";
+  const previousXp = getCompletedXpBefore(problem.id);
+  const completedCount = progress.completedProblemIds.length;
 
   return `
     <section class="page">
@@ -344,6 +385,21 @@ function renderMission() {
           <span class="meta-pill">+${problem.xp} XP</span>
           <span class="meta-pill">${problem.filename}</span>
           <span class="meta-pill">${problem.module}</span>
+        </div>
+
+        <div class="mission-meta-grid">
+          <div class="metric-card">
+            <span>XP before this</span>
+            <strong>${formatXp(previousXp)}</strong>
+          </div>
+          <div class="metric-card">
+            <span>Completed</span>
+            <strong>${completedCount}</strong>
+          </div>
+          <div class="metric-card">
+            <span>Total XP</span>
+            <strong>${formatXp(progress.xp)}</strong>
+          </div>
         </div>
 
         <p class="mission-description">${problem.description}</p>
@@ -507,9 +563,21 @@ document.addEventListener("click", (event) => {
 
   const { action, problemId, module } = actionButton.dataset;
 
+  if (action === "jump-problem") {
+    const input = document.getElementById("jump-problem-input");
+    const value = input ? input.value : "";
+    const result = jumpToProblem(value);
+    if (!result.ok) {
+      state.message = { type: "error", text: result.message };
+      render();
+    }
+    return;
+  }
+
   if (action === "open-mission") {
     state.currentView = "mission";
     state.selectedProblemId = Number(problemId);
+    updateProblemHash(state.selectedProblemId);
     state.message = null;
     render();
     return;
@@ -543,6 +611,12 @@ document.addEventListener("click", (event) => {
 });
 
 window.addEventListener("DOMContentLoaded", () => {
-  state.selectedProblemId = getCurrentMission().id;
+  const hashProblemId = getProblemIdFromHash();
+  if (hashProblemId) {
+    state.selectedProblemId = hashProblemId;
+    state.currentView = "mission";
+  } else {
+    state.selectedProblemId = getCurrentMission().id;
+  }
   render();
 });
