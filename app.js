@@ -121,6 +121,22 @@ function getXpThrough(problemId) {
     .reduce((sum, problem) => sum + Number(problem.xp), 0);
 }
 
+function getDisplayedCompletedProblemIds(problemId = state.selectedProblemId) {
+  const targetId = Number(problemId);
+  const displayIds = new Set(progress.completedProblemIds.map((id) => Number(id)));
+  const maxViewedId = Math.max(
+    0,
+    ...Array.from(displayIds),
+    Number.isFinite(targetId) ? targetId : 0,
+  );
+
+  for (let id = 1; id <= maxViewedId; id += 1) {
+    displayIds.add(id);
+  }
+
+  return displayIds;
+}
+
 function updateProblemHash(problemId) {
   const nextId = Number(problemId);
   if (!Number.isFinite(nextId)) return;
@@ -270,9 +286,10 @@ function renderNavButtons() {
 }
 
 function renderDashboard() {
-  const completedCount = progress.completedProblemIds.length;
-  const totalCount = window.PROBLEMS.length;
   const currentMission = getCurrentMission();
+  const displayIds = getDisplayedCompletedProblemIds(currentMission.id);
+  const completedCount = displayIds.size;
+  const totalCount = window.PROBLEMS.length;
   const levelSummary = getLevelSummary(currentMission.id);
   const percentage = Math.round((completedCount / totalCount) * 100);
 
@@ -445,13 +462,14 @@ function renderMission() {
 }
 
 function renderProgress() {
-  const completed = progress.completedProblemIds.length;
+  const displayIds = getDisplayedCompletedProblemIds(state.selectedProblemId || getCurrentMission().id);
+  const completed = displayIds.size;
   const total = window.PROBLEMS.length;
   const percentage = Math.round((completed / total) * 100);
   const currentLevelSummary = getLevelSummary(state.selectedProblemId || getCurrentMission().id);
   const moduleSummary = moduleOrder.map((moduleName) => {
     const problems = getModuleProblems(moduleName);
-    const completedCount = problems.filter((problem) => isProblemCompleted(problem.id)).length;
+    const completedCount = problems.filter((problem) => displayIds.has(problem.id)).length;
     const percent = Math.round((completedCount / problems.length) * 100);
 
     return `
