@@ -99,6 +99,28 @@ function getCompletedXpBefore(problemId) {
     .reduce((sum, problem) => sum + Number(problem.xp), 0);
 }
 
+function getXpBefore(problemId) {
+  const targetId = Number(problemId);
+  if (!Number.isFinite(targetId)) {
+    return 0;
+  }
+
+  return window.PROBLEMS
+    .filter((problem) => problem.id < targetId)
+    .reduce((sum, problem) => sum + Number(problem.xp), 0);
+}
+
+function getXpThrough(problemId) {
+  const targetId = Number(problemId);
+  if (!Number.isFinite(targetId)) {
+    return 0;
+  }
+
+  return window.PROBLEMS
+    .filter((problem) => problem.id <= targetId)
+    .reduce((sum, problem) => sum + Number(problem.xp), 0);
+}
+
 function updateProblemHash(problemId) {
   const nextId = Number(problemId);
   if (!Number.isFinite(nextId)) return;
@@ -198,10 +220,6 @@ function completeProblem(problemId, enteredName) {
 
   if (isProblemCompleted(problemId)) {
     return { ok: false, message: "This mission has already been completed." };
-  }
-
-  if (!isProblemUnlocked(problemId)) {
-    return { ok: false, message: "Complete the previous mission first." };
   }
 
   const normalizedInput = normalizeProblemName(enteredName);
@@ -371,8 +389,9 @@ function renderMission() {
   const messageHtml = state.message
     ? `<div class="status-message ${state.message.type}">${state.message.text}</div>`
     : "";
-  const previousXp = getCompletedXpBefore(problem.id);
-  const completedCount = progress.completedProblemIds.length;
+  const previousXp = getXpBefore(problem.id);
+  const xpToMission = getXpThrough(problem.id);
+  const currentLevel = getLevelSummary();
 
   return `
     <section class="page">
@@ -393,12 +412,12 @@ function renderMission() {
             <strong>${formatXp(previousXp)}</strong>
           </div>
           <div class="metric-card">
-            <span>Completed</span>
-            <strong>${completedCount}</strong>
+            <span>XP to this mission</span>
+            <strong>${formatXp(xpToMission)}</strong>
           </div>
           <div class="metric-card">
-            <span>Total XP</span>
-            <strong>${formatXp(progress.xp)}</strong>
+            <span>Current Level</span>
+            <strong>Level ${currentLevel.level}</strong>
           </div>
         </div>
 
@@ -527,7 +546,18 @@ function render() {
       mainContent = renderDashboard();
   }
 
-  app.innerHTML = mainContent;
+  const levelSummary = getLevelSummary();
+  const levelFooter = `
+    <div class="level-footer">
+      <div class="level-footer-box">
+        <span>Current Level</span>
+        <strong>Level ${levelSummary.level}</strong>
+        <small>${levelSummary.label}</small>
+      </div>
+    </div>
+  `;
+
+  app.innerHTML = `${mainContent}${levelFooter}`;
 
   const form = document.getElementById("mission-form");
   if (form) {

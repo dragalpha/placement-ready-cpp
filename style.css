@@ -558,6 +558,42 @@ input:focus-visible {
   color: var(--muted);
 }
 
+.level-footer {
+  margin-top: 22px;
+  display: flex;
+  justify-content: center;
+}
+
+.level-footer-box {
+  min-width: min(420px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(15, 23, 42, 0.8);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+}
+
+.level-footer-box span {
+  color: var(--muted);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.level-footer-box strong {
+  font-size: 1.2rem;
+  color: var(--accent);
+}
+
+.level-footer-box small {
+  color: var(--text);
+  opacity: 0.9;
+}
+
 @media (max-width: 900px) {
   .stats-card,
   .main-panel,
