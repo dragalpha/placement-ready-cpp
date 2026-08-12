@@ -188,8 +188,10 @@ function jumpToProblem(problemId) {
 
   state.currentView = "dashboard";
   state.selectedProblemId = targetId;
+  progress.currentProblemId = targetId;
   state.message = null;
   updateProblemHash(targetId);
+  saveProgress();
   render();
   return { ok: true, message: "Opened mission." };
 }
@@ -300,16 +302,16 @@ function completeProblem(problemId, enteredName) {
 
   progress.completedProblemIds = [...new Set([...progress.completedProblemIds, Number(problemId)])];
   progress.xp += Number(problem.xp);
-  progress.currentProblemId = Number(problemId);
+
+  const nextMission = getNextProgressionProblem(problemId);
+  const nextId = nextMission ? Number(nextMission.id) : Number(problemId);
+
+  progress.currentProblemId = nextId;
+  state.selectedProblemId = nextId;
+  state.currentView = "mission";
+  updateProblemHash(nextId);
 
   saveProgress();
-
-  const nextMission = getUnlockedNextProblem(problemId);
-  if (nextMission) {
-    state.selectedProblemId = nextMission.id;
-  } else {
-    state.selectedProblemId = Number(problemId);
-  }
 
   return {
     ok: true,
@@ -756,9 +758,16 @@ document.addEventListener("click", (event) => {
   }
 
   if (action === "open-mission") {
+    const targetId = Number(problemId);
+    if (!Number.isFinite(targetId) || !getProblemById(targetId)) {
+      return;
+    }
+
     state.currentView = "mission";
-    state.selectedProblemId = Number(problemId);
-    updateProblemHash(state.selectedProblemId);
+    state.selectedProblemId = targetId;
+    progress.currentProblemId = targetId;
+    updateProblemHash(targetId);
+    saveProgress();
     state.message = null;
     render();
     return;
