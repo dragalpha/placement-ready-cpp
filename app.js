@@ -260,6 +260,24 @@ function getUnlockedNextProblem(problemId) {
   return nextProblem || null;
 }
 
+function getNextProgressionProblem(problemId = state.selectedProblemId) {
+  const currentProblem = getProblemById(problemId);
+  if (!currentProblem) {
+    return null;
+  }
+
+  const nextProblemInModule = getUnlockedNextProblem(currentProblem.id);
+  if (nextProblemInModule) {
+    return nextProblemInModule;
+  }
+
+  const afterCurrent = window.PROBLEMS.find(
+    (problem) => Number(problem.id) > Number(currentProblem.id) && isProblemUnlocked(problem.id),
+  );
+
+  return afterCurrent || currentProblem;
+}
+
 function completeProblem(problemId, enteredName) {
   const problem = getProblemById(problemId);
   if (!problem) {
@@ -318,6 +336,7 @@ function renderNavButtons() {
 
 function renderDashboard() {
   const currentMission = getCurrentMission();
+  const continueMission = getNextProgressionProblem(currentMission.id) || currentMission;
   const displayIds = getDisplayedCompletedProblemIds(currentMission.id);
   const completedCount = displayIds.size;
   const totalCount = window.PROBLEMS.length;
@@ -396,7 +415,7 @@ function renderDashboard() {
             ${exampleHtml}
           </div>
           <div class="action-row">
-            <button class="primary-button" data-action="open-mission" data-problem-id="${currentMission.id}">Continue</button>
+            <button class="primary-button" data-action="open-mission" data-problem-id="${continueMission.id}">Continue</button>
           </div>
         </div>
       </article>
