@@ -164,10 +164,11 @@ function isProblemUnlocked(problemId) {
   return isProblemCompleted(previous.id);
 }
 
-function getLevelSummary() {
-  const completedCount = progress.completedProblemIds.length;
+function getLevelSummary(problemId = null) {
+  const targetProblemId = Number(problemId ?? state.selectedProblemId ?? progress.currentProblemId ?? 1);
+  const progressReference = Number.isFinite(targetProblemId) && targetProblemId > 0 ? targetProblemId : 1;
 
-  if (completedCount === 0) {
+  if (progressReference <= 0) {
     return { level: 1, label: "Programming Apprentice" };
   }
 
@@ -187,7 +188,7 @@ function getLevelSummary() {
     { start: 287, end: 300, level: 13, label: "Final Boss Preparation" },
   ];
 
-  const current = levelMap.find((item) => completedCount >= item.start && completedCount <= item.end) || levelMap[levelMap.length - 1];
+  const current = levelMap.find((item) => progressReference >= item.start && progressReference <= item.end) || levelMap[levelMap.length - 1];
   return { level: current.level, label: current.label };
 }
 
@@ -272,7 +273,7 @@ function renderDashboard() {
   const completedCount = progress.completedProblemIds.length;
   const totalCount = window.PROBLEMS.length;
   const currentMission = getCurrentMission();
-  const levelSummary = getLevelSummary();
+  const levelSummary = getLevelSummary(currentMission.id);
   const percentage = Math.round((completedCount / totalCount) * 100);
 
   return `
@@ -391,7 +392,7 @@ function renderMission() {
     : "";
   const previousXp = getXpBefore(problem.id);
   const xpToMission = getXpThrough(problem.id);
-  const currentLevel = getLevelSummary();
+  const currentLevel = getLevelSummary(problem.id);
 
   return `
     <section class="page">
@@ -447,6 +448,7 @@ function renderProgress() {
   const completed = progress.completedProblemIds.length;
   const total = window.PROBLEMS.length;
   const percentage = Math.round((completed / total) * 100);
+  const currentLevelSummary = getLevelSummary(state.selectedProblemId || getCurrentMission().id);
   const moduleSummary = moduleOrder.map((moduleName) => {
     const problems = getModuleProblems(moduleName);
     const completedCount = problems.filter((problem) => isProblemCompleted(problem.id)).length;
@@ -477,7 +479,7 @@ function renderProgress() {
 
         <div class="meta-row" style="margin-top: 18px;">
           <span class="meta-pill">Total XP: ${formatXp(progress.xp)}</span>
-          <span class="meta-pill">Current Level: ${getLevelSummary().level}</span>
+          <span class="meta-pill">Current Level: ${currentLevelSummary.level}</span>
         </div>
       </article>
 
@@ -546,7 +548,7 @@ function render() {
       mainContent = renderDashboard();
   }
 
-  const levelSummary = getLevelSummary();
+  const levelSummary = getLevelSummary(state.selectedProblemId || getCurrentMission().id);
   const levelFooter = `
     <div class="level-footer">
       <div class="level-footer-box">
