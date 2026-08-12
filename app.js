@@ -3,6 +3,7 @@ const DEFAULT_PROGRESS = {
   xp: 0,
   completedProblemIds: [],
   currentProblemId: 1,
+  lastView: "dashboard",
   settings: {
     confirmReset: false,
   },
@@ -87,7 +88,15 @@ function getModuleProblems(moduleName) {
   return window.PROBLEMS.filter((problem) => problem.module === moduleName);
 }
 
-function getCurrentMission() {
+function getCurrentMission(problemId = state.selectedProblemId) {
+  const selectedId = Number(problemId ?? progress.currentProblemId ?? 1);
+  if (Number.isFinite(selectedId) && selectedId > 0) {
+    const selectedProblem = getProblemById(selectedId);
+    if (selectedProblem) {
+      return selectedProblem;
+    }
+  }
+
   const next = window.PROBLEMS.find((problem) => !isProblemCompleted(problem.id) && isProblemUnlocked(problem.id));
   return next || window.PROBLEMS[window.PROBLEMS.length - 1];
 }
@@ -121,6 +130,10 @@ function getXpThrough(problemId) {
     .reduce((sum, problem) => sum + Number(problem.xp), 0);
 }
 
+function getTotalPossibleXp() {
+  return window.PROBLEMS.reduce((sum, problem) => sum + Number(problem.xp), 0);
+}
+
 function getDisplayedCompletedProblemIds(problemId = state.selectedProblemId) {
   const targetId = Number(problemId);
   const displayIds = new Set(progress.completedProblemIds.map((id) => Number(id)));
@@ -135,6 +148,24 @@ function getDisplayedCompletedProblemIds(problemId = state.selectedProblemId) {
   }
 
   return displayIds;
+}
+
+function getDisplayedUnlockedProblemIds(problemId = state.selectedProblemId) {
+  const targetId = Number(problemId);
+  if (!Number.isFinite(targetId) || targetId <= 0) {
+    return new Set();
+  }
+
+  const unlocked = new Set();
+  for (let id = 1; id <= targetId; id += 1) {
+    unlocked.add(id);
+  }
+  return unlocked;
+}
+
+function getLastSavedView() {
+  const rawView = progress.lastView || "dashboard";
+  return ["dashboard", "skill-tree", "progress", "settings", "mission"].includes(rawView) ? rawView : "dashboard";
 }
 
 function updateProblemHash(problemId) {
@@ -155,7 +186,7 @@ function jumpToProblem(problemId) {
     return { ok: false, message: "Enter a valid problem number." };
   }
 
-  state.currentView = "mission";
+  state.currentView = "dashboard";
   state.selectedProblemId = targetId;
   state.message = null;
   updateProblemHash(targetId);
@@ -291,13 +322,15 @@ function renderDashboard() {
   const completedCount = displayIds.size;
   const totalCount = window.PROBLEMS.length;
   const levelSummary = getLevelSummary(currentMission.id);
+  const totalPossibleXp = getTotalPossibleXp();
+  const displayedXp = getXpThrough(currentMission.id);
   const percentage = Math.round((completedCount / totalCount) * 100);
 
   return `
     <section class="page dashboard-grid">
       <article class="card stats-card">
         <p class="label">XP</p>
-        <p class="value highlight">${formatXp(progress.xp)} XP</p>
+        <p class="value highlight">${formatXp(displayedXp)} XP</p>
       </article>
 
       <article class="card stats-card">
@@ -313,6 +346,11 @@ function renderDashboard() {
       <article class="card stats-card">
         <p class="label">Current Level</p>
         <p class="value" style="font-size: 1.25rem; line-height: 1.35;">Level ${levelSummary.level}</p>
+      </article>
+
+      <article class="card stats-card">
+        <p class="label">Max Goal</p>
+        <p class="value" style="font-size: 1.25rem; line-height: 1.35;">${formatXp(totalPossibleXp)} XP</p>
       </article>
 
       <article class="card main-panel">
@@ -354,12 +392,13 @@ function renderDashboard() {
 }
 
 function renderSkillTree() {
+  const displayUnlockedIds = getDisplayedUnlockedProblemIds(state.selectedProblemId || getCurrentMission().id);
   const groups = moduleOrder.map((moduleName) => {
     const moduleProblems = getModuleProblems(moduleName);
     const rows = moduleProblems
       .map((problem) => {
         const completed = isProblemCompleted(problem.id);
-        const unlocked = isProblemUnlocked(problem.id);
+        const unlocked = isProblemUnlocked(problem.id) || displayUnlockedIds.has(problem.id);
         const current = state.selectedProblemId === problem.id || getCurrentMission().id === problem.id;
 
         let stateName = "locked";
@@ -539,6 +578,31 @@ function renderSettings() {
   `;
 }
 
+function saveUiState() {
+  progress.currentProblemId = Number(state.selectedProblemId || 1);
+  progress.lastView = state.currentView || "dashboard";
+  saveProgress();
+}
+
+function loadUiState() {
+  const savedTarget = Number(progress.currentProblemId || 1);
+  const savedView = getLastSavedView();
+  state.selectedProblemId = Number.isFinite(savedTarget) && savedTarget > 0 ? savedTarget : 1;
+  state.currentView = savedView;
+}
+
+function restoreFromSavedState() {
+  const hashProblemId = getProblemIdFromHash();
+  const savedProblemId = Number(progress.currentProblemId || state.selectedProblemId || 1);
+
+  state.currentView = "dashboard";
+  state.selectedProblemId = Number.isFinite(hashProblemId) && hashProblemId > 0
+    ? hashProblemId
+    : Number.isFinite(savedProblemId) && savedProblemId > 0
+      ? savedProblemId
+      : 1;
+}
+
 function render() {
   const app = document.getElementById("app");
 
@@ -578,6 +642,7 @@ function render() {
   `;
 
   app.innerHTML = `${mainContent}${levelFooter}`;
+  saveUiState();
 
   const form = document.getElementById("mission-form");
   if (form) {
@@ -625,7 +690,7 @@ document.addEventListener("click", (event) => {
   }
 
   if (action === "open-mission") {
-    state.currentView = "mission";
+    state.currentView = "dashboard";
     state.selectedProblemId = Number(problemId);
     updateProblemHash(state.selectedProblemId);
     state.message = null;
@@ -661,12 +726,7 @@ document.addEventListener("click", (event) => {
 });
 
 window.addEventListener("DOMContentLoaded", () => {
-  const hashProblemId = getProblemIdFromHash();
-  if (hashProblemId) {
-    state.selectedProblemId = hashProblemId;
-    state.currentView = "mission";
-  } else {
-    state.selectedProblemId = getCurrentMission().id;
-  }
+  loadUiState();
+  restoreFromSavedState();
   render();
 });
