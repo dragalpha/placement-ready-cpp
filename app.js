@@ -325,6 +325,25 @@ function renderDashboard() {
   const totalPossibleXp = getTotalPossibleXp();
   const displayedXp = getXpThrough(currentMission.id);
   const percentage = Math.round((completedCount / totalCount) * 100);
+  const hintHtml = currentMission.hint
+    ? `
+      <div class="support-card compact">
+        <h3>Hint</h3>
+        <p>${currentMission.hint}</p>
+      </div>
+    `
+    : "";
+  const exampleHtml = currentMission.example
+    ? `
+      <div class="support-card compact">
+        <h3>Example</h3>
+        <div class="example-box">
+          <div><span>Input</span><pre>${currentMission.example.input || "-"}</pre></div>
+          <div><span>Output</span><pre>${currentMission.example.output || "-"}</pre></div>
+        </div>
+      </div>
+    `
+    : "";
 
   return `
     <section class="page dashboard-grid">
@@ -372,6 +391,10 @@ function renderDashboard() {
             <span class="meta-pill">${currentMission.module}</span>
           </div>
           <p class="mission-description">${currentMission.description}</p>
+          <div class="support-stack compact-stack">
+            ${hintHtml}
+            ${exampleHtml}
+          </div>
           <div class="action-row">
             <button class="primary-button" data-action="open-mission" data-problem-id="${currentMission.id}">Continue</button>
           </div>
@@ -449,6 +472,25 @@ function renderMission() {
   const previousXp = getXpBefore(problem.id);
   const xpToMission = getXpThrough(problem.id);
   const currentLevel = getLevelSummary(problem.id);
+  const hintHtml = problem.hint
+    ? `
+      <div class="support-card">
+        <h3>Hint</h3>
+        <p>${problem.hint}</p>
+      </div>
+    `
+    : "";
+  const exampleHtml = problem.example
+    ? `
+      <div class="support-card">
+        <h3>Example</h3>
+        <div class="example-box">
+          <div><span>Input</span><pre>${problem.example.input || "-"}</pre></div>
+          <div><span>Output</span><pre>${problem.example.output || "-"}</pre></div>
+        </div>
+      </div>
+    `
+    : "";
 
   return `
     <section class="page">
@@ -479,6 +521,11 @@ function renderMission() {
         </div>
 
         <p class="mission-description">${problem.description}</p>
+
+        <div class="support-stack">
+          ${hintHtml}
+          ${exampleHtml}
+        </div>
 
         <div class="warning-box">
           ⚠️ Don’t skip problems. Solve it yourself before marking it complete.
